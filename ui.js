@@ -21,6 +21,11 @@ window.addEventListener('popstate',()=>{if(ignorePop){ignorePop=false;return}
   if(!$('#sheet').hidden&&sheetPushed){sheetPushed=false;closeSheet(true);return}
   if(navStack.length)go(navStack.pop(),null,true);else if(view!=='fin')go('fin',null,true)});
 
+/* ---------- запрет масштабирования пальцами ---------- */
+['gesturestart','gesturechange','gestureend'].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
+document.addEventListener('touchmove',e=>{if(e.touches&&e.touches.length>1)e.preventDefault()},{passive:false});
+document.addEventListener('wheel',e=>{if(e.ctrlKey)e.preventDefault()},{passive:false});
+
 /* ---------- тост ---------- */
 let toastT;
 function toast(t,undo){const e=$('#toast');e.innerHTML=`<span>${esc(t)}</span>${undo?'<button type="button" id="undo">Отменить</button>':''}`;e.hidden=false;e.style.animation='none';void e.offsetWidth;e.style.animation='';
@@ -83,7 +88,7 @@ function tilt(){const el=$('#bal');if(!el)return;let t;
   el.addEventListener('pointermove',mv);el.addEventListener('pointerleave',lv);el.addEventListener('pointerup',lv);el.addEventListener('pointercancel',lv)}
 function coverflow(){const sc=$('#cf');if(!sc)return;const cards=[...sc.querySelectorAll('.oc')];const dots=$$('#cfd i');
   const f=()=>{const c=sc.scrollLeft+sc.clientWidth/2;let best=0,bd=1e9;cards.forEach((el,i)=>{const m=el.offsetLeft+el.offsetWidth/2;const o=Math.max(-1.6,Math.min(1.6,(m-c)/el.offsetWidth));
-    if(Math.abs(o)<bd){bd=Math.abs(o);best=i}if(!reduced())el.style.transform=`perspective(900px) rotateY(${-o*24}deg) translateZ(${-Math.abs(o)*60}px) scale(${1-Math.abs(o)*.06})`;el.style.opacity=1-Math.min(.5,Math.abs(o)*.4)});
+    if(Math.abs(o)<bd){bd=Math.abs(o);best=i}if(!reduced())el.style.transform=`perspective(900px) rotateY(${-o*14}deg) scale(${1-Math.min(1,Math.abs(o))*.08})`;el.style.opacity=1-Math.min(.5,Math.abs(o)*.4)});
     dots.forEach((d,i)=>d.classList.toggle('on',i===best))};
   let raf;sc.addEventListener('scroll',()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(f)},{passive:true});f()}
 function segPills(){$$('.seg').forEach(s=>{const on=s.querySelector('button.on'),p=s.querySelector('.pill');if(!on||!p)return;p.style.width=on.offsetWidth+'px';p.style.transform=`translateX(${on.offsetLeft-4}px)`})}

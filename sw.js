@@ -1,4 +1,4 @@
-const C='kassa-v4';
+const C='kassa-v5';
 const LOCAL=['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './app.css', './core.js', './ui.js', './views.js', './forms.js', './smart.js', './city.js', './tour.js', './boot.js'];
 const CDN=['https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', 'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;600;700&display=swap'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>Promise.all([...LOCAL.map(u=>c.add(u).catch(()=>{})),...CDN.map(u=>fetch(u,{mode:'cors'}).then(r=>c.put(u,r)).catch(()=>{}))])));self.skipWaiting()});

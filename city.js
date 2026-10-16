@@ -13,7 +13,7 @@ const City={ok:false,ready:false,host:null,canvas:null,labels:null,R:null,scene:
     try{this.R=new T.WebGLRenderer({canvas:this.canvas,antialias:true,alpha:true,powerPreference:'high-performance'})}catch(e){this.ok=false;return false}
     this.R.setPixelRatio(Math.min(2,devicePixelRatio||1));this.R.setClearColor(0x000000,0);
     const sc=this.scene=new T.Scene();sc.fog=new T.FogExp2(0x090c15,.055);
-    this.cam=new T.PerspectiveCamera(36,1,.1,100);this.target=new T.Vector3(0,1.55,0);
+    this.cam=new T.PerspectiveCamera(36,1,.1,100);this.target=new T.Vector3(0,2.15,0);
     sc.add(new T.HemisphereLight(0xffffff,0x221133,.65));
     const dl=new T.DirectionalLight(0xffe2c8,1.1);dl.position.set(3,7,5);sc.add(dl);
     const p1=new T.PointLight(0xff2e7e,1.4,22);p1.position.set(-4.5,3,2.5);sc.add(p1);
@@ -54,7 +54,7 @@ const City={ok:false,ready:false,host:null,canvas:null,labels:null,R:null,scene:
     const W=n<=5?1.6:1.35;const rows=n<=5?1:2;const perRow=Math.ceil(n/rows);
     D.objs.forEach((o,i)=>{const row=rows===1?0:Math.floor(i/perRow);const k=rows===1?i:i%perRow;const cnt=rows===1?n:(row===0?perRow:n-perRow);
       const off=k-(cnt-1)/2;const x=off*W,z=-Math.abs(off)*.45-row*1.6;
-      const H=.45+3.4*o.recv/maxV;const fr=o.recv>0?Math.max(0,Math.min(1,o.left/o.recv)):0;
+      const H=.4+2.5*o.recv/maxV;const fr=o.recv>0?Math.max(0,Math.min(1,o.left/o.recv)):0;
       const c1=new T.Color(o.g[0]),c2=new T.Color(o.g[1]);const w=.92;
       const g=new T.Group();g.position.set(x,0,z);
       const box=new T.BoxGeometry(1,1,1);box.translate(0,.5,0);
@@ -71,7 +71,7 @@ const City={ok:false,ready:false,host:null,canvas:null,labels:null,R:null,scene:
       g.add(shell,edges,fill,fl,glow,ring);this.root.add(g);
       const prev=this.prevH[o.id]||{H:0,F:0};
       const lb=document.createElement('div');lb.className='clbl';lb.style.setProperty('--c',o.g[1]);lb.innerHTML=`<small>${esc(o.name)}</small><b>${esc(moneyS(o.left))}</b>`;this.labels.appendChild(lb);
-      this.items.push({id:o.id,g,shell,edges,fill,fl,glow,lb,H,F:H*fr,h0:prev.H,f0:prev.F,w});
+      this.items.push({id:o.id,g,shell,edges,fill,fl,glow,lb,H,F:H*fr,h0:prev.H,f0:prev.F,w,pri:o.left});
       this.prevH[o.id]={H,F:H*fr}});
     /* монеты общей кассы */
     const gen=Math.max(0,D.gen);
@@ -92,7 +92,13 @@ const City={ok:false,ready:false,host:null,canvas:null,labels:null,R:null,scene:
     if(this.io)this.io.disconnect();this.io=new IntersectionObserver(es=>{this.vis=es[0].isIntersecting;if(this.vis)this.loop()});this.io.observe(host);
     this.loop()},
   detach(){cancelAnimationFrame(this.raf);this.raf=0;if(this.ro)this.ro.disconnect();if(this.io)this.io.disconnect();this.host=null},
-  resize(){if(!this.host)return;const w=this.host.clientWidth,h=this.host.clientHeight;if(!w||!h)return;this.R.setSize(w,h,false);this.cam.aspect=w/h;this.cam.fov=w/h<.9?42:36;this.cam.updateProjectionMatrix();this.W=w;this.H=h},
+  /* подписи над башнями: не заходят под баланс и не налезают друг на друга */
+  placeLabels(L){const top=this.ovB||this.H*.45,placed=[];L.sort((a,b)=>b.pri-a.pri);
+    for(const o of L){const lb=o.lb;if(!lb._w){lb._w=lb.offsetWidth||90;lb._h=lb.offsetHeight||32}const w=lb._w,h=lb._h;
+      const x=Math.max(w/2+4,Math.min(this.W-w/2-4,o.x));const r={l:x-w/2-3,r:x+w/2+3,t:o.y-h-2,b:o.y+2};
+      const ok=o.z<1&&r.t>top&&r.b<this.H-4&&!placed.some(p=>r.l<p.r&&r.r>p.l&&r.t<p.b&&r.b>p.t);
+      if(ok)placed.push(r);lb.style.opacity=ok?1:0;lb.style.transform=`translate(${(x-w/2).toFixed(1)}px,${(o.y-h).toFixed(1)}px)`}},
+  resize(){if(!this.host)return;const w=this.host.clientWidth,h=this.host.clientHeight;if(!w||!h)return;this.R.setSize(w,h,false);this.cam.aspect=w/h;this.cam.fov=w/h<.9?42:36;this.cam.updateProjectionMatrix();this.W=w;this.H=h;const ov=this.host.parentElement&&this.host.parentElement.querySelector('.hero-ov');if(ov){const a=ov.getBoundingClientRect(),b=this.host.getBoundingClientRect();this.ovB=a.bottom-b.top+6}},
 
   tap(e){const T=THREE;const r=this.canvas.getBoundingClientRect();const m=new T.Vector2(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
     const rc=new T.Raycaster();rc.setFromCamera(m,this.cam);
@@ -106,15 +112,17 @@ const City={ok:false,ready:false,host:null,canvas:null,labels:null,R:null,scene:
       const t=now/1000;const p=Math.min(1,(now-this.tStart)/(reduced()?1:1400));
       if(!this.drag){this.vel*=.94;this.ang+=this.vel+(reduced()?0:.0016)}
       const R=this.radius;this.cam.position.set(Math.sin(this.ang)*R,3.4+R*.12,Math.cos(this.ang)*R);this.cam.lookAt(this.target);this.cam.updateMatrixWorld();
+      const LB=[];
       this.items.forEach((it,i)=>{const q=ease(Math.max(0,Math.min(1,p*1.25-i*.08)));const H=it.h0+(it.H-it.h0)*q,F=it.f0+(it.F-it.f0)*q;
         it.shell.scale.y=Math.max(.001,H);it.edges.scale.y=it.shell.scale.y;it.fill.scale.y=Math.max(.001,F);it.fl.scale.y=Math.max(.001,H/it.H||0);
         it.fill.material.uniforms.t.value=t;it.glow.position.y=Math.max(.2,F);it.glow.material.opacity=.55+.25*Math.sin(t*2+i);
         v.set(it.g.position.x,H+.18,it.g.position.z).project(this.cam);const x=(v.x*.5+.5)*this.W,y=(-v.y*.5+.5)*this.H;
-        it.lb.style.transform=`translate(${x.toFixed(1)}px,${y.toFixed(1)}px) translate(-50%,-100%)`;it.lb.style.opacity=v.z<1&&y>this.H*.36?1:0});
+        LB.push({lb:it.lb,x,y,z:v.z,pri:it.pri})});
       if(this.coins){const k=this.coins.userData.k;this.coins.children.forEach((c,j)=>{if(c.userData.y!=null){const q=ease(Math.max(0,Math.min(1,p*1.4-j*.03)));c.position.y=c.userData.y+(1-q)*4;c.visible=q>0}});
         if(this.spin){this.spin.rotation.z=t*2.2;this.spin.position.y=.4+k*.105+Math.sin(t*2)*.08}
         v.set(this.coins.position.x,this.coins.userData.top+.15,this.coins.position.z).project(this.cam);const x=(v.x*.5+.5)*this.W,y=(-v.y*.5+.5)*this.H;const lb=this.coins.userData.lb;
-        if(lb){lb.style.transform=`translate(${x.toFixed(1)}px,${y.toFixed(1)}px) translate(-50%,-100%)`;lb.style.opacity=v.z<1&&y>this.H*.36?1:0}}
+        if(lb)LB.push({lb,x,y,z:v.z,pri:1e12})}
+      this.placeLabels(LB);
       const pa=this.parts.geometry.attributes.position,sp=this.parts.userData.spd;for(let i=0;i<sp.length;i++){let y=pa.getY(i)+sp[i];if(y>7)y=0;pa.setY(i,y)}pa.needsUpdate=true;
       this.disc.material.uniforms.t.value=t;
       this.R.render(this.scene,this.cam);this.raf=requestAnimationFrame(frame)};
